@@ -1,0 +1,11 @@
+[
+    {
+        "id":10,
+        "parentDir":123,
+        "size":1233,
+        "content":{
+            "files":[10],
+            "directories":[124,34]
+        }
+    }
+]
