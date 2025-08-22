@@ -1,11 +1,9 @@
 [
     {
-        "id":10,
-        "parentDir":123,
-        "size":1233,
-        "content":{
-            "files":[10],
-            "directories":[124,34]
-        }
+        "id": "a4e8e516-8a90-4e80-8955-0ad5c3cb902",
+        "name": "root",
+        "parentDir": null,
+        "files": [],
+        "directories": []
     }
 ]
