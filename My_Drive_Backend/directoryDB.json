@@ -1,9 +1,1 @@
-[
-    {
-        "id": "a4e8e516-8a90-4e80-8955-0ad5c3cb902",
-        "name": "root",
-        "parentDir": null,
-        "files": [],
-        "directories": []
-    }
-]
+[{"id":"a4e8e516-8a90-4e80-8955-0ad5c3cb902","name":"root","parentDir":null,"files":["ea81b941-3c74-4f38-9f43-0d897c79430d","5c2cb69e-835a-42b4-946c-1a1eaef1a8c2","5b2a1712-a96f-48fc-b88a-864819179a48"],"directories":["16141b56-b6f0-4478-a99f-6cbc697f3b1a","40434b90-eea8-4d85-b10d-ff8019f58bcb","5c59b0be-b9eb-4c67-bb31-f512afa7b326","2917f0d0-0bdf-4307-af62-24d2263fe3af","537134fe-ea44-4564-9f84-d5ab9b5dc781"]},{"id":"16141b56-b6f0-4478-a99f-6cbc697f3b1a","dirname":"comming","parentDir":"a4e8e516-8a90-4e80-8955-0ad5c3cb902","files":[],"directories":[]},{"id":"40434b90-eea8-4d85-b10d-ff8019f58bcb","dirname":"kbc","parentDir":"a4e8e516-8a90-4e80-8955-0ad5c3cb902","files":[],"directories":[]},{"id":"5c59b0be-b9eb-4c67-bb31-f512afa7b326","dirname":"Shunchan","parentDir":"a4e8e516-8a90-4e80-8955-0ad5c3cb902","files":[],"directories":[]},{"id":"2917f0d0-0bdf-4307-af62-24d2263fe3af","dirname":"Doreamon","parentDir":"a4e8e516-8a90-4e80-8955-0ad5c3cb902","files":[],"directories":[]}]

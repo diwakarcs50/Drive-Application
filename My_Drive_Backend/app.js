@@ -11,7 +11,12 @@ app.use(cors());
 
 app.use("/directory",directoryRoute)
 app.use("/file",fileRoute)
-// Read
+
+
+
+app.use((err,req,res,next)=>{
+  res.status(err.status || 500).json({message:"Somnething went wrong"})
+})
 
 
 app.listen(4000, () => {
