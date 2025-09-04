@@ -12,7 +12,8 @@ console.log(filesData)
 const router = express.Router()
 
 router.post("/:parentDirId?", (req, res) => {
-  const parentDirId = req.params.parentDirId || directoryData[0].id;
+  const user = req.user
+  const parentDirId = req.params.parentDirId || user.rootDirId;
   const filename = req.headers.filename || 'untitled'
 
   console.log(parentDirId)
@@ -45,12 +46,30 @@ router.post("/:parentDirId?", (req, res) => {
 });
 
 router.get("/:fileId", (req, res) => {
+
+  
   const { fileId } = req.params
   const myFile = filesData.find((data) => data.id === fileId)
+
+
+  const parentDirectory = directoryData.find((folder)=>folder.id === myFile.parentDirId)
+  if(parentDirectory.userId !== req.user.userId){
+    return res.status(401).json({error:"You do not have access to this file"})
+  }
+
 
   if (!myFile) {
     return res.status(404).json({ message: "File Not Found" })
   }
+
+    //checking if file belongs to the user
+  // const user = req.user
+  // const rootDir  = directoryData.find((folder)=>folder.id === user.rootDirId)
+  // const index = rootDir.files.findIndex((file)=>file === fileId)
+  // if(index === -1){
+  //   return res.status(401).json({message:"Unauthorised Access"})
+  // }
+
 
   if (req.query.action === "download") {
     res.set("Content-Disposition", `attachment; filename=${myFile.name}`);

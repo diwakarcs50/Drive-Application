@@ -4,6 +4,7 @@ import {  rm, writeFile } from "fs/promises";
 // import path, { dirname } from "path"
 import foldersData from "../directoryDB.json" with {type: "json"}
 import filesData from "../filesDB.json" with {type: "json"}
+import userData from "../usersDB.json" with {type:"json"}
 
 
 const router = express.Router()
@@ -11,15 +12,21 @@ const router = express.Router()
 
 
 router.get("/:id?", async (req, res) => {
-  const  id  = req.params.id || foldersData[0].id;
+  const user = req.user
+  console.log(user)
 
+  const  id = req.params.id || user.rootDirId;
+  
   // pick root or specific folder
   const directoryData = foldersData.find((folder) => folder.id === id) 
-    
-
-  if (!directoryData) {
+   if (!directoryData) {
     return res.status(404).json({ message: "Directory Data not found" });
   }
+
+  if(directoryData.userId !== user.userId){
+    return res.status(401).json({error:"Unauthorised to access directorary"})
+  }
+    
 
   // resolve files safely
   const files = directoryData.files
@@ -32,17 +39,20 @@ router.get("/:id?", async (req, res) => {
     .filter(Boolean)
     .map(({ id, dirname }) => ({ id, dirname }));
 
-  return resstatus(200).json({ ...directoryData, files, directories });
+  return res.status(200).json({ ...directoryData, files, directories });
 });
 
 
 
 router.post("/:parentDirId?", async (req, res) => {
   const dirname = req.headers.dirname || "New Folder"
-  const parentDirId = req.params.parentDirId || foldersData[0].id
+  const user  = req.user 
+  const parentDirId = req.params.parentDirId || user.rootDirId
   
     const dirId = crypto.randomUUID();
-    foldersData.push({id:dirId,dirname,parentDir:parentDirId,files:[],directories:[]})
+
+    
+    foldersData.push({id:dirId,dirname,parentDir:parentDirId,files:[],userId:user.userId,directories:[]})
     const parentFolder = foldersData.find((folder)=>folder.id === parentDirId)
 
     if(!parentFolder){

@@ -1,0 +1,23 @@
+[
+    {
+        "userId": "6f30dc9a-032f-494b-8b23-1fcec614db26",
+        "name": "ant",
+        "email": "ant@gmail.com",
+        "password": "ant",
+        "rootDirId": "1fb3feff-4554-4bac-a8c0-d64e981fcab1"
+    },
+    {
+        "userId": "d809c946-40e3-4fbb-a69b-c8c63cf76827",
+        "name": "iphone",
+        "email": "d.7484959595@gmail.com",
+        "password": "id",
+        "rootDirId": "f3dac51f-13b7-4905-88f6-186b1e56d19e"
+    },
+    {
+        "userId": "1368c0d0-2c73-48df-9b89-bfa7bb787da1",
+        "name": "Bihari",
+        "email": "bihari@gmail.com",
+        "password": "bihari",
+        "rootDirId": "36166bd1-e818-4604-a292-c0aa0167c7f4"
+    }
+]
