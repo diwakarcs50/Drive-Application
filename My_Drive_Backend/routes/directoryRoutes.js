@@ -12,8 +12,12 @@ const router = express.Router()
 
 
 router.get("/:id?", async (req, res) => {
+  const db = req.db
+  const collection = db.collection('users')
+  console.log(await collection.find().toArray())
+
   const user = req.user
-  console.log(user)
+
 
   const  id = req.params.id || user.rootDirId;
   
