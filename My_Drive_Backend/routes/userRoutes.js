@@ -1,73 +1,94 @@
 import express from 'express'
-import usersData from "../usersDB.json" with {type: "json"}
-import directoryData from "../directoryDB.json" with {type:"json"}
-import {writeFile} from 'fs/promises'
 import checkAuth from '../Auth.js'
 
 const router = express.Router()
 
-router.post("/register",async(req,res,next)=>{
-    
-    const {username,email,password} = req.body
+router.post("/register", async (req, res, next) => {
 
-    const emailData  = usersData.find((user)=>user.email === email)
-    if(emailData){
-        return res.status(409).json({error:"User already exist",message:"Email Already Taken"})
-    }
-     const userId = crypto.randomUUID()
-    const dirId = crypto.randomUUID()
+    const db = req.db
 
-    usersData.push({userId,name:username,email,password,rootDirId:dirId})
-// {id:dirId,dirname,parentDir:parentDirId,files:[],userId:user.userId,directories:[]}
-    directoryData.push({id:dirId,dirname:`root-${email}`,userId,parentDir:null,files:[],directories:[]})
-    console.log(usersData)
-    console.log(directoryData)
+    const {
+        username,
+        email,
+        password
+    } = req.body
 
-    try{
-         await writeFile('./usersDB.json',JSON.stringify(usersData))
-         await writeFile('./directoryDB.json',JSON.stringify(directoryData))
-         res.status(201).json({message:"User created"})
-    }catch(err){
-        console.log("Exception while writing");
-        next(err)
-    }
-
-    
-})
-
-
-router.post("/login",(req,res,next)=>{
-    const {email,password} = req.body
-    const user = usersData.find((user)=>user.email === email)
-    if(!user || user.password !== password){
-        return res.status(404).json({error:"Invalid Credentials"})
-    }
-
-    res.cookie('uid',user.userId,{
-        httpOnly:true,
-        maxAge: 60 * 1000 * 60 * 24 * 7
-    })
    
-    const check = user.email === email && user.password === password
-    console.log(req.body)
-    res.json({message:"User Logged in"})
-})
+    const emailData = await db.collection('users').findOne({email:email})
+   
 
-router.get("/", checkAuth,(req,res,next)=>{
- 
-        res.status(200).json({
-            name:req.user.name,
-            email:req.user.email
+    if (emailData !== null) {
+        return res.status(409).json({
+            error: "User already exist",
+            message: "Email Already Taken"
         })
+    }
+
+
+    const userRootDir = await db.collection('directories').insertOne({
+        dirname: `root-${email}`,
+        parentDir: null,    
+    })
+
+    const rootDirId = userRootDir.insertedId
+
+    const createdUser = await db.collection('users').insertOne({
+        username,
+        email,
+        password,
+        rootDirId
+    })
+
+    const userId = createdUser.insertedId
+
+    await db.collection('directories').updateOne({_id:rootDirId},{$set:{userId}})
+
+
+    res.status(201).json({
+        message: "User created"
+    })
 
 })
 
-router.post("/logout",checkAuth,(req,res)=>{
+
+router.post("/login", async(req, res, next) => {
+    const db = req.db
+    const {
+        email,
+        password
+    } = req.body
+
+    const user  = await db.collection('users').findOne({email:email,password})
+    // console.log(user)
+     if(user === null ){
+        return res.status(404).json({error:"Invalid Credentials"})
+     }
+
+     res.cookie('uid',user._id.toString(),{
+        httpOnly:true,
+        maxAge: 1000 * 60 * 60 * 24 * 7
+     })
+    //  console.log(user._id)
+
+    res.json({
+        message: "User Logged in"
+    })
+})
+
+router.get("/", checkAuth, (req, res, next) => {
+
+    res.status(200).json({
+        name: req.user.name,
+        email: req.user.email
+    })
+
+})
+
+router.post("/logout", checkAuth, (req, res) => {
     res.clearCookie('uid')
-    // res.cookie('uid','',{
-    //     maxAge:0
-    // })
-    res.status(200).json({message:"Logged out Successfully"})
+    res.status(200).json({
+        message: "Logged out Successfully"
+    }).end()
 })
 export default router
 

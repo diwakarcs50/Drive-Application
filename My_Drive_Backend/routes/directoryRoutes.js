@@ -1,10 +1,10 @@
 
 import express from "express";
 import {  rm, writeFile } from "fs/promises";
-// import path, { dirname } from "path"
-import foldersData from "../directoryDB.json" with {type: "json"}
-import filesData from "../filesDB.json" with {type: "json"}
-import userData from "../usersDB.json" with {type:"json"}
+
+
+import { Db, ObjectId } from "mongodb";
+
 
 
 const router = express.Router()
@@ -12,124 +12,126 @@ const router = express.Router()
 
 
 router.get("/:id?", async (req, res) => {
-  const db = req.db
-  const collection = db.collection('users')
-  console.log(await collection.find().toArray())
 
   const user = req.user
-
-
-  const  id = req.params.id || user.rootDirId;
   
-  // pick root or specific folder
-  const directoryData = foldersData.find((folder) => folder.id === id) 
-   if (!directoryData) {
-    return res.status(404).json({ message: "Directory Data not found" });
-  }
+  const id= req.params.id? new ObjectId(String(req.params.id)) : '' || user.rootDirId
 
-  if(directoryData.userId !== user.userId){
-    return res.status(401).json({error:"Unauthorised to access directorary"})
-  }
-    
+  const db = req.db
+ 
+  const directoryData = await db.collection('directories').findOne({_id:id,userId:user._id})
 
-  // resolve files safely
-  const files = directoryData.files
-    .map((fileId) => filesData.find((file) => file.id === fileId))
-    .filter(Boolean); // removes undefined if file not found
+    if(!directoryData){
+        return res.status(404).json({error:"Directory Not Found"})
+    }
 
-  // resolve sub-directories safely, return only {id, dirname}
-  const directories = directoryData.directories
-    .map((folderId) => foldersData.find((folder) => folder.id === folderId))
-    .filter(Boolean)
-    .map(({ id, dirname }) => ({ id, dirname }));
+  const directories = await db.collection('directories').find({parentDir:id}).toArray()
+  console.log(directories)
 
-  return res.status(200).json({ ...directoryData, files, directories });
+  const files = await db.collection('files').find({parentDirId:id}).toArray() 
+
+
+  return res.status(200).json({ ...directoryData, files, directories:directories.map((dir)=>({...dir,id:dir._id})) });
 });
 
 
 
-router.post("/:parentDirId?", async (req, res) => {
+router.post("/:parentDirId?", async (req, res,next) => {
   const dirname = req.headers.dirname || "New Folder"
   const user  = req.user 
-  const parentDirId = req.params.parentDirId || user.rootDirId
-  
-    const dirId = crypto.randomUUID();
+  const parentDirId = req.params.parentDirId ? new ObjectId(req.params.parentDirId) : '' || user.rootDirId
+  const db = req.db
+  try{
+     const parent = await db.collection('directories').findOne({_id:parentDirId})
 
-    
-    foldersData.push({id:dirId,dirname,parentDir:parentDirId,files:[],userId:user.userId,directories:[]})
-    const parentFolder = foldersData.find((folder)=>folder.id === parentDirId)
+   if(!parent){
+    return res.status(404).json({error:"Parent Not found"})
+   }
 
-    if(!parentFolder){
-      return res.status(404).json({message:"Parent Directory Not Found"})
-    }
-    parentFolder.directories.push(dirId);
-
-try {
-    await writeFile('./directoryDB.json',JSON.stringify(foldersData))
-    res.status(200).json({ message: "Directory Created!" });
-  } catch (err) {
-    res.status(400).json({ err: err.message });
+  const newDir = await db.collection('directories').insertOne({dirname,parentDir:parentDirId,userId:user._id})
+     res.status(201).json({success:"Directory Created"})
+  }catch(err){
+    next(err)
   }
-});
+  }
+);
 
-router.patch("/:parentDirId",(req,res,next)=>{
+router.patch("/:parentDirId",async(req,res,next)=>{
+     const db= req.db
+     console.log("USER ",req.user)
      const {parentDirId} = req.params
-     const directory = foldersData.find((folder)=>folder.id === parentDirId)
+     const directory = await db.collection('directories').updateOne({_id:new ObjectId(String(parentDirId)),userId:req.user._id},{$set:{dirname:req.body.newDirName}})
      if(!directory){
       res.status(404).json({message:"Directory Not Found"})
      }
-     directory.dirname=  req.body.newDirName
-     try{
-        writeFile("./directoryDB.json",JSON.stringify(foldersData))
-     }
-     catch(err){
-      next(err)
-     }
-    
      res.status(200).json({message:"Directory Renamed"})
 
 })
 
 router.delete("/:id",async(req,res,next)=>{
   const {id} = req.params
-  try{
+  const db= req.db
 
-    const directoryIndex  = foldersData.findIndex((directory)=>directory.id === id);
+  const dir = await db.collection('directories').findOne({_id:new ObjectId(String(id))})
+
+  const directories = []
+  
+  const parentDirObjId = new ObjectId(id)
+  
+
+  async function getDirectoryContents(id,fileCollection,directoryCollection){
+    console.log("starting time",new Date().toLocaleTimeString())
     
-    //  if (directoryIndex === -1) {
-    //   return res.status(404).json({ error: "Directory not found" });
-    // }
+        const files = await db.collection('files').find({parentDirId:id}).toArray()
+        const direc = await db.collection('directories').find({parentDir:id},{projection:{_id:1,dirname:1}}).toArray()
+        
 
-    const directoryDatas = foldersData[directoryIndex]
+        for(const file of files){  
+          fileCollection.push(file)
+          console.log("orignal name",file.name)
+        }
+        for( const {_id,dirname} of direc){
+          console.log(_id)
+          console.log(dirname)
+            directoryCollection.push(_id)
+            const {files,directories} =  await getDirectoryContents(_id,fileCollection,directoryCollection)
+        }
 
-    foldersData.splice(directoryIndex,1);
-
-    for await (const filesId of directoryDatas.files){
-      const fileIndex = filesData.findIndex((file)=>file.id === filesId)
-      const fileData = filesData[fileIndex]
-      await rm(`./storage/${fileData.id}${fileData.extension}`,{recursive:true})
-      filesData.splice(fileIndex,1);
-    }
-
-    for await (const dirId of directoryDatas.directories){
-         const dirIndex = foldersData.findIndex((directory)=>directory.id === dirId)
-         foldersData.splice(dirIndex,1)
-    }
-
-    const parentDirId = directoryDatas.parentDir
-    const parentDirData  = foldersData.find((folder)=>folder.id === parentDirId)
-    parentDirData.directories = parentDirData.directories.filter((folderId)=>folderId !== id);
-
-    await writeFile('./filesDB.json',JSON.stringify(filesData))
-    await writeFile('./directoryDB.json',JSON.stringify(foldersData))
-
-    res.status(200).json({message:"Directory Deleted"});
-
-
+        return {files,direc}
+        
   }
-  catch(err){
-    next(err)
+
+  async function deleteFile(fileCollection,fileIdCollection){
+    console.log("comming")
+    for (const file of fileCollection){
+     console.log("yes comming")
+     fileIdCollection.push(file._id)
+     const id = file._id.toString()
+     const extension = file.extension
+     console.log("duplicate",`${id}${extension}`)
+     await rm(`${process.cwd()}/storage/${id}${extension}`)
   }
+
+  return fileIdCollection
+  }
+
+  const fileCollection = []
+  const directoryCollection = []
+  const fileIdCollection = []
+ 
+  await getDirectoryContents(parentDirObjId,fileCollection,directoryCollection)
+  console.log("File coollection reciev",fileCollection)
+  console.log("directory collection reciewved",directoryCollection)
+
+  await deleteFile(fileCollection,fileIdCollection)
+  console.log(fileIdCollection)
+  await db.collection('files').deleteMany({_id:{$in:fileIdCollection}})
+  directoryCollection.push(parentDirObjId)
+  await db.collection('directories').deleteMany({_id:{$in:directoryCollection}})
+
+   console.log("ending time",new Date().toLocaleTimeString())
+   res.status(200).json({message:"Successfully deleted"})
+   
 })
 
 export default router
